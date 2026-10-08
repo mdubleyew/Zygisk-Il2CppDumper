@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <cinttypes>
+#include <chrono> // Required for std::chrono
 #include "hack.h"
 #include "zygisk.hpp"
 #include "game.h"
@@ -32,7 +33,14 @@ public:
 
     void postAppSpecialize(const AppSpecializeArgs *) override {
         if (enable_hack) {
-            std::thread hack_thread(hack_prepare, game_data_dir, data, length);
+            // A lambda wrapper is used here to stall the background thread for 7 seconds
+            // before passing control over to the hack_prepare routine.
+            std::thread hack_thread([this]() {
+                LOGI("Zygisk thread detached. Pausing injection payload for 7 seconds...");
+                std::this_thread::sleep_for(std::chrono::seconds(7));
+                LOGI("Stall complete. Initializing hack_prepare payload.");
+                hack_prepare(game_data_dir, data, length);
+            });
             hack_thread.detach();
         }
     }
